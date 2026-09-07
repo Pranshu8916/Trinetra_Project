@@ -1,0 +1,114 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env
+.env*.local
+.env.production
+.env.development
+backend/.env
+backend/.env.*
+!.env.example
+!backend/.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# backend
+venv/
+.venv/
+backend/venv/
+backend/.venv/
+backend/__pycache__/
+backend/*.dist-info/
+backend/*.libs/
+backend/storage/
+backend/PIL
+backend/PIL/
+backend/_argon2_cffi_bindings*
+backend/_cffi_backend*
+backend/_yaml*
+backend/annotated_doc*
+backend/annotated_types*
+backend/anyio*
+backend/argon2*
+backend/bson*
+backend/certifi*
+backend/cffi*
+backend/click*
+backend/cloudinary*
+backend/cv2*
+backend/dns*
+backend/dnspython*
+backend/dotenv*
+backend/fastapi*
+backend/filetype*
+backend/gridfs*
+backend/h11*
+backend/httptools*
+backend/idna*
+backend/jwt*
+backend/mrz*
+backend/multipart*
+backend/numpy*
+backend/opencv*
+backend/packaging*
+backend/pillow*
+backend/pip*
+backend/pwdlib*
+backend/pycparser*
+backend/pydantic*
+backend/pydantic_core*
+backend/pydantic_settings*
+backend/pyjwt*
+backend/pymongo*
+backend/pypdf*
+backend/pytesseract*
+backend/python_dotenv*
+backend/python_multipart*
+backend/pyyaml*
+backend/six*
+backend/starlette*
+backend/typing_extensions*
+backend/typing_inspection*
+backend/urllib3*
+backend/uvicorn*
+backend/uvloop*
+backend/watchfiles*
+backend/websockets*
+backend/yaml*
+backend/.env
+backend/.env.local

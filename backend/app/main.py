@@ -1,0 +1,68 @@
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.api.auth import router as auth_router
+from app.api.health import router as health_router
+from app.api.protected import router as protected_router
+from app.api.screen import router as screen_router
+from app.api.users import router as users_router
+from app.api.verification import router as verification_router
+from app.core.database import database
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        await database.users.create_index("username", unique=True)
+        await database.users.create_index("user_id", unique=True)
+        await database.verification_sessions.create_index("session_id", unique=True)
+        await database.documents.create_index("document_id", unique=True)
+        await database.documents.create_index("session_id")
+        await database.document_results.create_index("document_id", unique=True)
+        await database.document_results.create_index("session_id")
+        await database.biometric_results.create_index("biometric_id", unique=True)
+        await database.biometric_results.create_index("session_id")
+        await database.verification_results.create_index("session_id", unique=True)
+        # Single-shot screening reports index
+        await database.screening_reports.create_index("report_id", unique=True)
+        await database.screening_reports.create_index("screened_at")
+        await database.screening_reports.create_index("operator_id")
+    except Exception as error:
+        print(f"Index initialization warning: {error}")
+    yield
+
+
+app = FastAPI(
+    title="Trinetra Backend",
+    description="AI-powered identity verification backend",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+
+# Enable CORS for frontend integration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?$",
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
+
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+app.include_router(health_router)
+app.include_router(users_router)
+app.include_router(auth_router)
+app.include_router(protected_router)
+app.include_router(verification_router)
+app.include_router(screen_router)

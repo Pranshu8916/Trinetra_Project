@@ -1,0 +1,40 @@
+# Python Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Python Bytecode & Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Secrets & Environment Files
+.env
+*.env.local
+*.env.*.local
+!.env.example
+
+# Storage & Uploads (Ignore user uploads, preserve directory structure)
+storage/documents/*
+!storage/documents/.gitkeep
+storage/biometrics/*
+!storage/biometrics/.gitkeep
+
+# Logs
+logs/*
+!logs/.gitkeep
+*.log
+
+# IDE & OS Artifacts
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
