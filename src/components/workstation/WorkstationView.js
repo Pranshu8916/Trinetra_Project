@@ -187,6 +187,7 @@ export default function WorkstationView({ user, masterSessionId }) {
         typeConfidence: Math.round((result.ai_confidence?.document_authenticity ?? 0.9) * 100),
         block_hash:     result.block_hash || "0x7f8a9b3c4d5e6f",
         watchlist_status: result.watchlist_status || "CLEAR",
+        watchlist_details: result.watchlist_details || null,
         ai_confidence:  result.ai_confidence || {},
         imgMeta: {
           resolution: "Live Capture",

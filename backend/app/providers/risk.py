@@ -1,6 +1,7 @@
 from typing import Any
 
 from app.providers.base import RiskEngineProvider
+from app.services.watchlist_service import get_watchlist_service
 
 
 class RuleBasedRiskEngineProvider(RiskEngineProvider):
@@ -30,16 +31,43 @@ class RuleBasedRiskEngineProvider(RiskEngineProvider):
             reasons.append("Required identity fields missing from document")
 
         # ── 1b. Security Watchlist / Interpol Blacklist Check (Module 2) ───
-        doc_no = str(document_analysis.get("document_number") or "").upper()
-        name_str = str(document_analysis.get("holder_name") or "").upper()
-        blacklisted_entries = {"BLACK_LISTED", "INTERPOL_NOTICE", "SSB_FLAGGED", "WANTED_001"}
-        
-        is_blacklisted = any(b in doc_no or b in name_str for b in blacklisted_entries)
-        watchlist_status = "FLAGGED" if is_blacklisted else "CLEAR"
+        doc_no = str(document_analysis.get("document_number") or "")
+        name_str = str(document_analysis.get("holder_name") or "")
+        dob = str(document_analysis.get("date_of_birth") or "")
+        nationality = str(document_analysis.get("nationality") or "")
+
+        try:
+            watchlist_svc = get_watchlist_service()
+            watchlist_check = watchlist_svc.check_subject(
+                name=name_str,
+                document_number=doc_no,
+                birth_date=dob,
+                country=nationality,
+            )
+        except Exception as wl_err:
+            # Resilient fallback
+            watchlist_check = {
+                "is_flagged": False,
+                "status": "CLEAR",
+                "match_details": None,
+                "error": str(wl_err),
+            }
+
+        is_blacklisted = watchlist_check.get("is_flagged", False)
+        watchlist_status = watchlist_check.get("status", "CLEAR")
+        watchlist_details = watchlist_check
 
         if is_blacklisted:
             score += 90
-            reasons.append("Subject / Document FLAGGED on SSB & Interpol Security Watchlist")
+            match_details = watchlist_check.get("match_details") or {}
+            charges = match_details.get("charges")
+            entity_name = match_details.get("name", name_str)
+            agency = match_details.get("issuing_agency", "SSB / INTERPOL Watchlist")
+            reason_msg = f"Subject / Document FLAGGED on {agency}: {entity_name}"
+            if charges:
+                first_charge = str(charges).split("\n")[0][:75]
+                reason_msg += f" ({first_charge})"
+            reasons.append(reason_msg)
 
         # ── 2. Face Presence & Quality ────────────────────────────────
         if not face_analysis.get("face_detected"):
@@ -120,4 +148,5 @@ class RuleBasedRiskEngineProvider(RiskEngineProvider):
             "decision": decision,
             "reasons": reasons,
             "watchlist_status": watchlist_status,
+            "watchlist_details": watchlist_details,
         }

@@ -9,7 +9,9 @@ from app.api.protected import router as protected_router
 from app.api.screen import router as screen_router
 from app.api.users import router as users_router
 from app.api.verification import router as verification_router
+from app.api.watchlist import router as watchlist_router
 from app.core.database import database
+from app.services.watchlist_service import get_watchlist_service
 
 
 @asynccontextmanager
@@ -29,8 +31,11 @@ async def lifespan(app: FastAPI):
         await database.screening_reports.create_index("report_id", unique=True)
         await database.screening_reports.create_index("screened_at")
         await database.screening_reports.create_index("operator_id")
+
+        # Initialize Interpol Red Notices Watchlist cache
+        get_watchlist_service()
     except Exception as error:
-        print(f"Index initialization warning: {error}")
+        print(f"Index/Service initialization warning: {error}")
     yield
 
 
@@ -66,3 +71,4 @@ app.include_router(auth_router)
 app.include_router(protected_router)
 app.include_router(verification_router)
 app.include_router(screen_router)
+app.include_router(watchlist_router)

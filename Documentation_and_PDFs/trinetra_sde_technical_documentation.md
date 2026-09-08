@@ -201,6 +201,8 @@ graph TD
     RiskEval --> RiskVerdict["Final Risk Category: Low (0-20), Medium (21-60), High 61-100)"]
 ```
 
+> **Live Implementation Reference**: For detailed technical endpoints, Interpol dataset schemas, and border post SOPs, refer to the [Interpol & SSB Watchlist Specification](file:///c:/Users/ASUS/OneDrive/Desktop/SIH/Trinetra/Documentation_and_PDFs/interpol_integration_specification.md).
+
 ---
 
 ## 8. Module 5: Cryptographic SHA-256 Blockchain Audit Ledger Workflow

@@ -345,6 +345,46 @@ def parse_pan_card(text: str) -> dict[str, Any] | None:
 # 5b. VISA & TRAVEL PERMIT PARSER
 # =====================================================================
 
+COMMON_NATIONALITY_MAP: dict[str, str] = {
+    "INDIAN": "IND", "INDIA": "IND", "IND": "IND", "ND8": "IND", "1ND": "IND", "0IN": "IND", "IN0": "IND", "1NDIA": "IND",
+    "AMERICAN": "USA", "UNITED STATES": "USA", "USA": "USA", "US": "USA", "U5A": "USA",
+    "BRITISH": "GBR", "UNITED KINGDOM": "GBR", "GBR": "GBR", "UK": "GBR", "6BR": "GBR",
+    "CANADIAN": "CAN", "CANADA": "CAN", "CAN": "CAN",
+    "AUSTRALIAN": "AUS", "AUSTRALIA": "AUS", "AUS": "AUS",
+    "GERMAN": "DEU", "GERMANY": "DEU", "DEU": "DEU", "DE": "DEU",
+    "FRENCH": "FRA", "FRANCE": "FRA", "FRA": "FRA",
+    "ITALIAN": "ITA", "ITALY": "ITA", "ITA": "ITA",
+    "SPANISH": "ESP", "SPAIN": "ESP", "ESP": "ESP",
+    "CHINESE": "CHN", "CHINA": "CHN", "CHN": "CHN",
+    "JAPANESE": "JPN", "JAPAN": "JPN", "JPN": "JPN",
+    "RUSSIAN": "RUS", "RUSSIA": "RUS", "RUS": "RUS",
+    "NEPALESE": "NPL", "NEPAL": "NPL", "NPL": "NPL",
+    "BHUTANESE": "BTN", "BHUTAN": "BTN", "BTN": "BTN",
+    "BANGLADESHI": "BGD", "BANGLADESH": "BGD", "BGD": "BGD",
+    "PAKISTANI": "PAK", "PAKISTAN": "PAK", "PAK": "PAK",
+    "SRI LANKAN": "LKA", "SRI LANKA": "LKA", "LKA": "LKA",
+    "SINGAPOREAN": "SGP", "SINGAPORE": "SGP", "SGP": "SGP",
+    "MALAYSIAN": "MYS", "MALAYSIA": "MYS", "MYS": "MYS",
+    "INDONESIAN": "IDN", "INDONESIA": "IDN", "IDN": "IDN",
+    "THAI": "THA", "THAILAND": "THA", "THA": "THA",
+    "VIETNAMESE": "VNM", "VIETNAM": "VNM", "VNM": "VNM",
+    "FILIPINO": "PHL", "PHILIPPINES": "PHL", "PHL": "PHL",
+    "EMIRATI": "ARE", "UAE": "ARE", "ARE": "ARE",
+    "SAUDI": "SAU", "SAUDI ARABIA": "SAU", "SAU": "SAU",
+    "SOUTH KOREAN": "KOR", "KOREAN": "KOR", "KOREA": "KOR", "KOR": "KOR",
+    "SOUTH AFRICAN": "ZAF", "ZAF": "ZAF",
+    "BRAZILIAN": "BRA", "BRAZIL": "BRA", "BRA": "BRA",
+    "MEXICAN": "MEX", "MEXICO": "MEX", "MEX": "MEX",
+    "DUTCH": "NLD", "NETHERLANDS": "NLD", "NLD": "NLD",
+    "SWISS": "CHE", "SWITZERLAND": "CHE", "CHE": "CHE",
+    "SWEDISH": "SWE", "SWEDEN": "SWE", "SWE": "SWE",
+    "NORWEGIAN": "NOR", "NORWAY": "NOR", "NOR": "NOR",
+    "IRISH": "IRL", "IRELAND": "IRL", "IRL": "IRL",
+    "NEW ZEALANDER": "NZL", "NEW ZEALAND": "NZL", "NZL": "NZL",
+}
+NATIONALITY_KEYWORDS_SET: set[str] = set(COMMON_NATIONALITY_MAP.keys())
+
+
 def parse_visa_document(text: str) -> dict[str, Any] | None:
     upper_text = text.upper()
     is_visa = any(k in upper_text for k in ["VISA", "ENTRY PERMIT", "TRAVEL PERMIT", "DURATION OF STAY", "ENTRIES"])
@@ -352,13 +392,123 @@ def parse_visa_document(text: str) -> dict[str, Any] | None:
     if not is_visa:
         return None
 
-    # Visa Number extraction
-    visa_num_match = re.search(r"(?:VISA\s*NO|VISA\s*NUMBER|PERMIT\s*NO|VISA\s*#)[:\s]*([A-Z0-9\-]{6,15})", text, re.IGNORECASE)
-    if not visa_num_match:
-        visa_num_match = re.search(r"\b(V[A-Z0-9]{7,11})\b", upper_text)
-    visa_number = visa_num_match.group(1).strip() if visa_num_match else None
+    # 1. Nationality Extraction
+    nationality = None
+    nat_match = re.search(
+        r"(?:NATIONALITY|CITIZENSHIP)(?:\s*[\/\\]\s*NATIONALIT[EÉ])?\b[^\S\r\n]*[:\.\-\/]?\s*([A-Za-z0-9]+(?:\s+[A-Za-z]+)?)",
+        text,
+        re.IGNORECASE,
+    )
+    if not nat_match:
+        nat_match = re.search(
+            r"\b(?:PAYS\s*DE\s*NATIONALIT[EÉ]|COUNTRY\s*OF\s*NATIONALITY|NAT\.?)\b[^\S\r\n]*[:\.\-\/]?\s*([A-Za-z0-9]+(?:\s+[A-Za-z]+)?)",
+            text,
+            re.IGNORECASE,
+        )
+    if nat_match:
+        cand_nat = nat_match.group(1).split("\n")[0].strip().upper()
+        cand_nat = re.split(r"\b(?:DOB|DATE|SEX|PASSPORT|VISA|SURNAME|NAME|GIVEN|TYPE)\b", cand_nat)[0].strip(" :.-")
+        if cand_nat in COMMON_NATIONALITY_MAP:
+            nationality = COMMON_NATIONALITY_MAP[cand_nat]
+        elif len(cand_nat) == 3 and cand_nat.isalpha():
+            nationality = cand_nat
+        elif len(cand_nat) >= 3 and cand_nat not in {"NOT", "NON", "NONE", "UNSPECIFIED"}:
+            nationality = cand_nat
 
-    # Visa Type extraction
+    # 2. Holder Name Extraction
+    # Surnames: "Surname / Nom", "Surname", "Last Name / Nom", "Last Name"
+    sur_match = re.search(
+        r"\b(?:SURNAME(?:\s*[\/\\]\s*NOM)?|LAST\s*NAME|NOM\s*DE\s*FAMILLE)\b[^\S\r\n]*[:\.\-\/]?\s*([A-Za-z\s\.\'\-]+)",
+        text,
+        re.IGNORECASE,
+    )
+    surname = None
+    if sur_match:
+        cand_s = sur_match.group(1).split("\n")[0].strip()
+        cand_s = re.split(r"\b(?:VISA|TYPE|DOB|DATE|SEX|GENDER|NATIONALITY|PASSPORT|GIVEN|FIRST|PR[EÉ]NOM|NUMBER|NO)\b", cand_s, flags=re.IGNORECASE)[0].strip(" :.-")
+        if cand_s and cand_s.upper() not in NATIONALITY_KEYWORDS_SET and len(cand_s) >= 2:
+            surname = cand_s
+
+    # Given Names: "Given Names / Prénoms", "Given Name", "First Name / Prénom", "First Name"
+    giv_match = re.search(
+        r"\b(?:GIVEN\s*NAMES?(?:\s*[\/\\]\s*PR[EÉ]NOMS?)?|FIRST\s*NAME(?:\s*[\/\\]\s*PR[EÉ]NOM)?|PR[EÉ]NOMS?|FORENAMES?)\b[^\S\r\n]*[:\.\-\/]?\s*([A-Za-z\s\.\'\-]+)",
+        text,
+        re.IGNORECASE,
+    )
+    given = None
+    if giv_match:
+        cand_g = giv_match.group(1).split("\n")[0].strip()
+        cand_g = re.split(r"\b(?:VISA|TYPE|DOB|DATE|SEX|GENDER|NATIONALITY|PASSPORT|SURNAME|LAST|NOM|NUMBER|NO)\b", cand_g, flags=re.IGNORECASE)[0].strip(" :.-")
+        if cand_g and cand_g.upper() not in NATIONALITY_KEYWORDS_SET and len(cand_g) >= 2:
+            given = cand_g
+
+    holder_name = None
+    if surname and given:
+        holder_name = f"{given} {surname}".strip()
+    elif surname:
+        holder_name = surname
+    elif given:
+        holder_name = given
+
+    # Fallback to general Full Name / Name of Holder
+    if not holder_name:
+        name_match = re.search(
+            r"\b(?:FULL\s*NAME|NAME\s*OF\s*HOLDER|HOLDER['\s]*S?\s*NAME|SURNAME\s*,\s*NAME|NOM\s*,\s*PR[EÉ]NOM|NAME(?:\s*[\/\\]\s*NOM)?)\b[^\S\r\n]*[:\.\-\/]?\s*([A-Za-z\s\.\'\-]+)",
+            text,
+            re.IGNORECASE,
+        )
+        if name_match:
+            cand = name_match.group(1).split("\n")[0].strip()
+            cand = re.split(r"\b(?:VISA|TYPE|DOB|DATE|SEX|GENDER|NATIONALITY|PASSPORT|COUNTRY|POST|ISSUING)\b", cand, flags=re.IGNORECASE)[0].strip(" :.-")
+            if cand.upper() in NATIONALITY_KEYWORDS_SET:
+                # Anti-pollution guard: candidate is actually a nationality
+                if not nationality:
+                    nationality = COMMON_NATIONALITY_MAP.get(cand.upper(), cand.upper())
+            elif len(cand) >= 2 and any(c.isalpha() for c in cand):
+                holder_name = cand
+
+    # If nationality still not resolved, check text lines for standalone country names
+    if not nationality:
+        for line in text.splitlines():
+            l_clean = line.strip().upper()
+            if l_clean in NATIONALITY_KEYWORDS_SET:
+                nationality = COMMON_NATIONALITY_MAP[l_clean]
+                break
+
+    # Final anti-swap check for holder_name
+    if holder_name and holder_name.upper() in NATIONALITY_KEYWORDS_SET:
+        if not nationality:
+            nationality = COMMON_NATIONALITY_MAP.get(holder_name.upper(), holder_name.upper())
+        holder_name = None
+
+    # 3. Visa Number Extraction
+    visa_num_match = re.search(
+        r"\b(?:VISA\s*NO|VISA\s*NUMBER|PERMIT\s*NO|VISA\s*#|CONTROL\s*NO|CONTROL\s*NUMBER)\b[^\S\r\n]*[:\.\-\/]?\s*([A-Z0-9\-]{6,15})",
+        text,
+        re.IGNORECASE,
+    )
+    visa_number = None
+    if visa_num_match:
+        cand_v = visa_num_match.group(1).strip()
+        # Ensure it does not contain passenger names or '<' filler
+        if not any(token in cand_v.upper() for token in (surname or "").upper().split() if len(token) >= 3):
+            visa_number = cand_v
+
+    # Fallback standalone visa number pattern (e.g. V12345678)
+    if not visa_number:
+        v_cand = re.search(r"\b(V\d{7,10})\b", upper_text)
+        if v_cand:
+            visa_number = v_cand.group(1).strip()
+
+    # 4. Passport Number Extraction from Visa
+    pass_match = re.search(
+        r"\b(?:PASSPORT\s*NO|PASSPORT\s*NUMBER|PASS\s*NO|TRAVEL\s*DOC\s*NO|DOC\s*NO)\b[^\S\r\n]*[:\.\-\/]?\s*([A-Z0-9]{6,12})",
+        text,
+        re.IGNORECASE,
+    )
+    passport_number = pass_match.group(1).strip() if pass_match else None
+
+    # 5. Visa Type extraction
     visa_type = "Tourist"
     if "BUSINESS" in upper_text:
         visa_type = "Business"
@@ -371,47 +521,73 @@ def parse_visa_document(text: str) -> dict[str, Any] | None:
     elif "WORK" in upper_text or "EMPLOYMENT" in upper_text:
         visa_type = "Work"
 
-    # Stay Duration extraction (e.g. 90 Days, 30 Days)
-    dur_match = re.search(r"(?:DURATION\s*OF\s*STAY|STAY\s*DURATION|STAY|DURATION)[:\s]*([0-9]{1,3}\s*(?:DAYS|MONTHS|YEARS))\b", text, re.IGNORECASE)
+    # 6. Stay Duration extraction
+    dur_match = re.search(r"(?:DURATION\s*OF\s*STAY|STAY\s*DURATION|STAY|DURATION)\b[^\S\r\n]*[:\.\-\/]?\s*([0-9]{1,3}\s*(?:DAYS|MONTHS|YEARS))\b", text, re.IGNORECASE)
     if not dur_match:
         dur_match = re.search(r"\b([0-9]{1,3}\s*(?:DAYS|MONTHS|YEARS))\b", text, re.IGNORECASE)
     stay_duration = dur_match.group(1).strip() if dur_match else "90 Days"
 
-    # Entry Validity (Single / Multiple)
+    # 7. Entry Validity (Single / Multiple)
     entry_val = "Multiple Entry"
     if "SINGLE" in upper_text:
         entry_val = "Single Entry"
     elif "DOUBLE" in upper_text:
         entry_val = "Double Entry"
 
-    # Holder Name extraction
-    name_match = re.search(r"(?:NAME|NAME\s*OF\s*HOLDER)[:\s]*([A-Za-z\s\.\'\-]+)", text, re.IGNORECASE)
-    holder_name = None
-    if name_match:
-        cand = name_match.group(1).split("\n")[0].strip()
-        cand = re.split(r"\b(?:VISA|TYPE|DOB|DATE|SEX|GENDER|NATIONALITY|PASSPORT)\b", cand, flags=re.IGNORECASE)[0].strip()
-        holder_name = cand.strip(" :.-")
+    # 8. Dates & MRZ Cross-Check
+    from app.utils.date_extractor import (
+        extract_clean_dob,
+        extract_clean_date_of_issue,
+        extract_clean_date_of_expiry,
+        is_valid_dob_date,
+    )
+    from app.utils.mrz_parser import find_mrz_in_text
 
-    # Dates
-    dob_match = re.search(r"(?:DOB|Date\s*of\s*Birth)[:\s]*([0-9]{2}[/\-,\.][0-9]{2}[/\-,\.][0-9]{4})", text, re.IGNORECASE)
-    dob = dob_match.group(1) if dob_match else "Unspecified"
+    dob = extract_clean_dob(text, is_visa=True)
+    date_of_issue = extract_clean_date_of_issue(text)
+    date_of_expiry = extract_clean_date_of_expiry(text)
 
-    exp_match = re.search(r"(?:VALID\s*UNTIL|EXPIRY|EXPIRATION)[:\s]*([0-9]{2}[/\-,\.][0-9]{2}[/\-,\.][0-9]{4})", text, re.IGNORECASE)
-    date_of_expiry = exp_match.group(1) if exp_match else None
+    # Check for MRZ in visa text to fill/cross-verify missing fields
+    mrz_res = find_mrz_in_text(text)
+    if mrz_res:
+        if not dob and mrz_res.get("date_of_birth") and is_valid_dob_date(mrz_res["date_of_birth"]):
+            dob = mrz_res["date_of_birth"]
+        if not date_of_expiry and mrz_res.get("expiration_date"):
+            date_of_expiry = mrz_res["expiration_date"]
+        if not passport_number and mrz_res.get("document_number"):
+            passport_number = mrz_res["document_number"]
+        if (not nationality or nationality in {"Unspecified", "R", "UNK"}) and mrz_res.get("nationality") and mrz_res["nationality"] not in {"R", "UNK"}:
+            nationality = mrz_res["nationality"]
+        if (not holder_name or holder_name == "Visa Holder") and mrz_res.get("holder_name"):
+            holder_name = mrz_res["holder_name"]
+
+    # Gender
+    gender = "Unspecified"
+    g_match = re.search(r"\b(?:SEX|GENDER|SEXE)\b[^\S\r\n]*[:\.\-\/]?\s*(MALE|FEMALE|M|F)\b", text, re.IGNORECASE)
+    if g_match:
+        raw_g = g_match.group(1).upper()
+        gender = "MALE" if raw_g in {"M", "MALE"} else "FEMALE"
+    elif mrz_res and mrz_res.get("sex") in {"MALE", "FEMALE"}:
+        gender = mrz_res["sex"]
+
+    doc_num = visa_number or passport_number or (mrz_res.get("document_number") if mrz_res else None) or "V987654321"
 
     return {
         "document_type": f"Visa ({visa_type})",
         "document_category": "visa",
-        "document_number": visa_number or "V987654321",
-        "visa_number": visa_number or "V987654321",
+        "document_number": doc_num,
+        "visa_number": visa_number or doc_num,
+        "passport_number": passport_number,
         "visa_type": visa_type,
         "stay_duration": stay_duration,
         "entry_validity": entry_val,
         "holder_name": holder_name or "Visa Holder",
+        "name": holder_name,
         "date_of_birth": dob,
+        "date_of_issue": date_of_issue,
         "date_of_expiry": date_of_expiry,
-        "gender": "Unspecified",
-        "nationality": "IND",
+        "gender": gender,
+        "nationality": nationality or "Unspecified",
         "issuing_authority": "Immigration & Checkpoints Authority",
         "checksums": {
             "overall_mrz_valid": True,

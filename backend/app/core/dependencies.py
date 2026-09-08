@@ -36,3 +36,21 @@ async def get_current_user(
         "username": payload.get("username"),
         "role": payload.get("role"),
     }
+
+
+async def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+) -> dict | None:
+    if credentials is None:
+        return None
+    try:
+        payload = decode_access_token(credentials.credentials)
+        if payload.get("sub"):
+            return {
+                "user_id": payload["sub"],
+                "username": payload.get("username"),
+                "role": payload.get("role"),
+            }
+    except Exception:
+        pass
+    return None

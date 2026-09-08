@@ -194,6 +194,7 @@ async def screen_document(
         reasons:    list = risk["reasons"]
         is_mock:    bool = risk["is_mock"]
         watchlist:  str  = risk.get("watchlist_status", "CLEAR")
+        watchlist_details: dict = risk.get("watchlist_details") or {}
 
         signals = doc_analysis.get("signals", {})
         exif_info = signals.get("exif_analysis", {})
@@ -236,6 +237,7 @@ async def screen_document(
         "report_id":        report_id,
         "block_hash":       block_hash,
         "watchlist_status": watchlist,
+        "watchlist_details": watchlist_details,
         "risk_score":       risk_score,
         "risk_level":       risk_level,
         "decision":         decision,
