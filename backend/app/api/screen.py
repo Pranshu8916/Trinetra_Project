@@ -114,14 +114,16 @@ async def screen_document(
     # Infer file extension for temp files
     _ext_map = {
         "image/jpeg":       ".jpg",
+        "image/jpg":        ".jpg",
         "image/png":        ".png",
+        "image/webp":       ".webp",
         "application/pdf":  ".pdf",
     }
     passport_path: Path | None = None
     live_path:     Path | None = None
 
     try:
-        passport_path = _write_temp(passport_bytes, _ext_map[passport_image.content_type])
+        passport_path = _write_temp(passport_bytes, _ext_map.get(passport_image.content_type, ".jpg"))
         live_path     = _write_temp(live_bytes,     _ext_map.get(live_frame.content_type, ".jpg"))
 
         # ── Module 1: OCR Extraction ──────────────────────────────────────────
