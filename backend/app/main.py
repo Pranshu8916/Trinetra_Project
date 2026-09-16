@@ -76,6 +76,50 @@ async def add_cors_and_security_headers(request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
 
+
+from fastapi.exceptions import RequestValidationError, HTTPException
+from fastapi.responses import JSONResponse
+from fastapi import Request
+
+
+@app.exception_handler(HTTPException)
+async def custom_http_exception_handler(request: Request, exc: HTTPException):
+    origin = request.headers.get("origin", "*")
+    headers = dict(exc.headers or {})
+    headers["Access-Control-Allow-Origin"] = origin
+    headers["Access-Control-Allow-Credentials"] = "true"
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=headers,
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    origin = request.headers.get("origin", "*")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors()},
+        headers={
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    origin = request.headers.get("origin", "*")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal Server Error: {str(exc)}"},
+        headers={
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+        },
+    )
+
 app.include_router(health_router)
 app.include_router(users_router)
 app.include_router(auth_router)

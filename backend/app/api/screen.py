@@ -52,8 +52,8 @@ from app.services.screening_report_service import save_screening_report
 router = APIRouter(prefix="/api/v1", tags=["Screening"])
 
 # ── Constants ──────────────────────────────────────────────────────────────────
-_ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png"}
-_ALLOWED_DOC_TYPES   = {"image/jpeg", "image/png", "application/pdf"}
+_ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/jpg", "image/webp", "application/octet-stream", "blob"}
+_ALLOWED_DOC_TYPES   = {"image/jpeg", "image/png", "image/jpg", "image/webp", "application/pdf", "application/octet-stream", "blob"}
 _MAX_FILE_BYTES      = 10 * 1024 * 1024  # 10 MB
 
 _DECISION_ACTIONS: dict[str, str] = {
