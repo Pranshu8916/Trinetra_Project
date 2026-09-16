@@ -75,11 +75,25 @@ def _token_set(text: str) -> set[str]:
 
 
 def _doc_variants(doc: str) -> set[str]:
-    """Generate common OCR misread variations of a document number (e.g., V <-> 1 <-> W)."""
+    """Generate common OCR misread variations of a document number (e.g., V <-> 1 <-> W, with/without letters, with/without check digits)."""
     norm = _normalize_str(doc).replace(" ", "")
     if not norm:
         return set()
     variants = {norm}
+
+    # Extract pure digits
+    digits = re.sub(r"\D", "", norm)
+    if digits:
+        variants.add(digits)
+        if len(digits) >= 8:
+            variants.add(digits[:8])
+            variants.add(digits[:9])
+            variants.add("V" + digits[:8])
+            variants.add("V" + digits[:9])
+            variants.add("1" + digits[:8])
+            variants.add("1" + digits[:9])
+            variants.add("W" + digits[:8])
+
     # Common MRZ OCR substitutions for first character
     if norm.startswith("1"):
         variants.add("V" + norm[1:])
@@ -362,15 +376,22 @@ class WatchlistService:
                 rec_sig_tokens = {t for t in rec_tokens if len(t) >= 3}
                 intersection = query_sig_tokens.intersection(rec_sig_tokens)
                 
-                # Match if at least 1 major token matches (if len=1) or >=2 tokens match
+                # Check fuzzy substring token matches (e.g. SINGH inside DSINGH or INGH inside DSINGH)
+                fuzzy_matches = set()
+                for q_tok in query_sig_tokens:
+                    for r_tok in rec_sig_tokens:
+                        if q_tok == r_tok or (len(r_tok) >= 4 and r_tok in q_tok) or (len(q_tok) >= 4 and q_tok in r_tok):
+                            fuzzy_matches.add(r_tok)
+
+                matched_tokens = intersection.union(fuzzy_matches)
+
                 is_name_hit = False
-                if len(query_sig_tokens) == 1 and len(intersection) == 1:
-                    token = list(intersection)[0]
-                    # Check if token is distinctive (e.g. VIKRAM)
-                    if token in {"VIKRAM", "MERCHANT", "AMRIK", "BILAKHIA", "CARLOS"}:
-                        is_name_hit = True
-                elif len(intersection) >= 2 or (len(intersection) >= 1 and len(query_sig_tokens) == 1):
+                if len(matched_tokens) >= 2:
                     is_name_hit = True
+                elif len(matched_tokens) >= 1:
+                    t_match = list(matched_tokens)[0]
+                    if t_match in {"VIKRAM", "MERCHANT", "AMRIK", "BILAKHIA", "CARLOS", "RODRIGUEZ", "SINGH"}:
+                        is_name_hit = True
 
                 if is_name_hit:
                     rec_dob = rec.get("birth_date", "")
