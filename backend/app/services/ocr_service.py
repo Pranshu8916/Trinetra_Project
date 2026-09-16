@@ -60,7 +60,17 @@ def extract_text_from_image(file_path: str) -> str:
     except Exception:
         pass
 
-    # 1. Pytesseract on enhanced image (Ultra lightweight ~15MB RAM)
+    # 1. Pytesseract on original full-resolution image (MAX ACCURACY for high-res original documents)
+    try:
+        raw_text = pytesseract.image_to_string(Image.open(file_path))
+        if raw_text:
+            for l in raw_text.splitlines():
+                if l.strip() and l.strip() not in extracted_lines:
+                    extracted_lines.append(l.strip())
+    except Exception:
+        pass
+
+    # 2. Pytesseract on contrast-enhanced image (for watermarked or low-contrast text)
     try:
         tess_text = pytesseract.image_to_string(Image.open(enhanced_path))
         if tess_text:
@@ -70,7 +80,7 @@ def extract_text_from_image(file_path: str) -> str:
     except Exception:
         pass
 
-    # 2. EasyOCR fallback (Only if pytesseract yields no text)
+    # 3. EasyOCR fallback (Only if pytesseract yields no text)
     if not extracted_lines:
         reader = get_easyocr_reader()
         if reader:
