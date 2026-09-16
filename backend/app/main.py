@@ -49,84 +49,20 @@ app = FastAPI(
 # Enable CORS for frontend integration
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https?://.*",
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
 @app.middleware("http")
-async def add_cors_and_security_headers(request, call_next):
-    origin = request.headers.get("origin")
-    if request.method == "OPTIONS":
-        from fastapi.responses import Response
-        response = Response(status_code=204)
-        if origin:
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-        else:
-            response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-        response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, Accept, Origin, User-Agent, X-Requested-With"
-        return response
-
+async def add_security_headers(request, call_next):
     response = await call_next(request)
-    if origin:
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Access-Control-Allow-Credentials"] = "true"
-    else:
-        response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
-
-
-from fastapi.exceptions import RequestValidationError, HTTPException
-from fastapi.responses import JSONResponse
-from fastapi import Request
-
-
-def _apply_cors(response: JSONResponse, origin: str | None) -> JSONResponse:
-    if origin:
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Access-Control-Allow-Credentials"] = "true"
-    else:
-        response.headers["Access-Control-Allow-Origin"] = "*"
-    return response
-
-
-@app.exception_handler(HTTPException)
-async def custom_http_exception_handler(request: Request, exc: HTTPException):
-    origin = request.headers.get("origin")
-    headers = dict(exc.headers or {})
-    res = JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": exc.detail},
-        headers=headers,
-    )
-    return _apply_cors(res, origin)
-
-
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    origin = request.headers.get("origin")
-    res = JSONResponse(
-        status_code=422,
-        content={"detail": exc.errors()},
-    )
-    return _apply_cors(res, origin)
-
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    origin = request.headers.get("origin")
-    res = JSONResponse(
-        status_code=500,
-        content={"detail": f"Internal Server Error: {str(exc)}"},
-    )
-    return _apply_cors(res, origin)
 
 app.include_router(health_router)
 app.include_router(users_router)
