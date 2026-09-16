@@ -162,6 +162,7 @@ async def screen_document(
             document_number=doc_no,
             birth_date=dob,
             country=nationality,
+            raw_text=raw_text,
         )
 
         if watchlist_check.get("is_flagged"):
