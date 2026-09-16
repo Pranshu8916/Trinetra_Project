@@ -9,8 +9,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install lightweight PyTorch CPU wheel first
-RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+# Pin NumPy 1.x and Pillow 10.2.0 BEFORE installing PyTorch & OpenCV
+RUN pip install --no-cache-dir "numpy<2.0.0" "Pillow>=10.2.0,<10.3.0"
+RUN pip install --no-cache-dir torch torchvision --extra-index-url https://download.pytorch.org/whl/cpu
 
 # Copy and install python requirements
 COPY requirements.txt .
