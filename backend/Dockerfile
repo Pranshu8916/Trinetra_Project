@@ -9,6 +9,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+# Install lightweight PyTorch CPU wheel first (150MB instead of 2.8GB GPU wheel)
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
 # Copy and install python requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
