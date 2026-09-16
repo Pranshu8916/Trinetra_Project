@@ -103,10 +103,10 @@ def extract_text(
     if not path.exists():
         raise FileNotFoundError(f"Document file not found: {file_path}")
 
-    if content_type in {"image/jpeg", "image/png"}:
+    if content_type.startswith("image/") or content_type in {"application/octet-stream", "blob"}:
         return extract_text_from_image(str(path))
 
     if content_type == "application/pdf":
         return extract_text_from_pdf(str(path))
 
-    raise ValueError(f"Unsupported document type: {content_type}")
+    return extract_text_from_image(str(path))
