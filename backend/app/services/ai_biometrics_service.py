@@ -4,18 +4,18 @@ from typing import Any
 
 import cv2
 import numpy as np
-import torch
 from PIL import Image
 
-# Global singletons for PyTorch HuggingFace FaceNet models
+# Global singletons for PyTorch HuggingFace FaceNet models (lazy loaded)
 _mtcnn = None
 _resnet = None
 _device = None
 
 
-def get_device() -> torch.device:
+def get_device():
     global _device
     if _device is None:
+        import torch
         _device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     return _device
 
@@ -24,6 +24,7 @@ def get_facenet_models():
     """Initializes and caches MTCNN and InceptionResnetV1 (pretrained on VGGFace2)."""
     global _mtcnn, _resnet
     if _mtcnn is None or _resnet is None:
+        import torch
         from facenet_pytorch import InceptionResnetV1, MTCNN
         dev = get_device()
         _mtcnn = MTCNN(
@@ -186,6 +187,7 @@ def extract_face_and_embedding(image_input: Any, is_document: bool = False):
 
     # 2. PyTorch MTCNN + FaceNet fallback if loaded
     try:
+        import torch
         pil_img = load_pil_image(image_input)
         mtcnn, resnet = get_facenet_models()
         dev = get_device()
