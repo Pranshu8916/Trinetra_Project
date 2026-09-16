@@ -54,17 +54,7 @@ def extract_text_from_image(file_path: str) -> str:
     except Exception as e:
         pass
 
-    # 1. EasyOCR on enhanced image
-    reader = get_easyocr_reader()
-    if reader:
-        try:
-            lines = reader.readtext(enhanced_path, detail=0)
-            if lines:
-                extracted_lines.extend(lines)
-        except Exception:
-            pass
-
-    # 2. Pytesseract on enhanced image (if installed)
+    # 1. Pytesseract on enhanced image (Ultra lightweight ~15MB RAM)
     try:
         tess_text = pytesseract.image_to_string(Image.open(enhanced_path))
         if tess_text:
@@ -73,6 +63,17 @@ def extract_text_from_image(file_path: str) -> str:
                     extracted_lines.append(l.strip())
     except Exception:
         pass
+
+    # 2. EasyOCR fallback (Only if pytesseract yields no text)
+    if not extracted_lines:
+        reader = get_easyocr_reader()
+        if reader:
+            try:
+                lines = reader.readtext(enhanced_path, detail=0)
+                if lines:
+                    extracted_lines.extend(lines)
+            except Exception:
+                pass
 
     if extracted_lines:
         return "\n".join(extracted_lines).strip()
