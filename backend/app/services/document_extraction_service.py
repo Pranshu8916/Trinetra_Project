@@ -197,8 +197,8 @@ def extract_document_fields(
         # Clean noise/labels from surname/given
         surname = re.sub(r"^(?:NOM|SURNAME|LAST\s*NAME)[:\s]*", "", surname, flags=re.IGNORECASE).strip()
         given = re.sub(r"^(?:PRENOMS?|PRÉNOM|GIVEN\s*NAMES?|FIRST\s*NAME)[:\s]*", "", given, flags=re.IGNORECASE).strip()
-        surname = re.split(r"\b(?:DOB|DATE|SEX|GENDER|NO|DOC|NAT|NATIONALIT|ISSUED|EXPIRY)\b", surname, flags=re.IGNORECASE)[0].strip(" :.-/")
-        given = re.split(r"\b(?:DOB|DATE|SEX|GENDER|NO|DOC|NAT|NATIONALIT|ISSUED|EXPIRY)\b", given, flags=re.IGNORECASE)[0].strip(" :.-/")
+        surname = re.split(r"\b(?:GIVEN|FIRST|PRENOM|PRÉNOM|DOB|DATE|SEX|GENDER|NO|DOC|NAT|NATIONALIT|ISSUED|EXPIRY)\b", surname, flags=re.IGNORECASE)[0].strip(" :.-/")
+        given = re.split(r"\b(?:SURNAME|LAST|NOM|DOB|DATE|SEX|GENDER|NO|DOC|NAT|NATIONALIT|ISSUED|EXPIRY)\b", given, flags=re.IGNORECASE)[0].strip(" :.-/")
 
         if not surname:
             nom_m = re.search(r"\bNOM[:\s]+([A-Za-z]+)", text, re.IGNORECASE)
@@ -382,6 +382,13 @@ def extract_document_fields(
             extracted["nationality"] = None
             if "nationality" in field_confidence:
                 del field_confidence["nationality"]
+
+    # Final Name Noise Cleaning & Sanitization
+    from app.utils.indian_id_parser import clean_person_name
+    if extracted["name"]:
+        sanitized_name = clean_person_name(extracted["name"])
+        if sanitized_name:
+            extracted["name"] = sanitized_name
 
     # Calculate overall confidence
     if field_confidence:

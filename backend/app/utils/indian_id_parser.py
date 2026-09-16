@@ -84,13 +84,38 @@ _INVALID_NAME_KEYWORDS = {
     "DOCUMENT", "ENROLLMENT", "VID", "SIGNATURE", "HELP", "WWW", "S/O", "D/O", "W/O",
     "C/O", "SON OF", "DAUGHTER OF", "WIFE OF", "CARE OF", "FATHER", "MOTHER", "HUSBAND",
     "S/0", "D/0", "W/0", "C/0", "MERCHANTS", "1947", "HELP@UIDAI.GOV.IN", "WWW.UIDAI.GOV.IN",
-    "DETAILS", "CARD", "FORM", "LICENCE", "LICENSE", "PERMANENT", "ACCOUNT", "ENTRY", "PERMIT"
+    "DETAILS", "CARD", "FORM", "LICENCE", "LICENSE", "PERMANENT", "ACCOUNT", "ENTRY", "PERMIT",
+    "TR", "ONA", "ERIE", "LMV", "MCWG", "MCWOG", "TRANS", "NONTRANS", "RTO", "CLASS", "COV",
+    "VEHICLE", "AUTHORIZATION", "AUTHORISED", "AUTHORISE", "DL", "ID", "NT", "LMVNT", "CCCECE",
+    "DSINGH", "NON", "TRANSPORT"
 }
 
 
+def is_valid_name_token(w: str) -> bool:
+    """Check if a word token is a valid human name component (filtering out OCR noise & artifacts)."""
+    u = w.upper()
+    if u in _INVALID_NAME_KEYWORDS:
+        return False
+    if len(u) > 16:
+        return False
+    # Filter repeating character noise like "CCCECECCCCCCCCCCCCCCCS" or "TTTT"
+    max_char_freq = max(u.count(c) for c in set(u))
+    if max_char_freq >= 4 or (len(u) >= 6 and max_char_freq / len(u) > 0.5):
+        return False
+    if len(set(u)) <= 2 and len(u) >= 3:
+        return False
+    # Vowels check (valid English/Indian names have at least 1 vowel)
+    vowels = sum(1 for c in u if c in "AEIOUY")
+    if len(u) >= 4 and vowels == 0:
+        return False
+    return True
+
+
 def clean_person_name(raw: str) -> str | None:
+    """Sanitizes raw OCR text into a clean 2–3 word personal name."""
     if not raw or len(raw) < 2:
         return None
+
     # Strip relation prefixes (S/O, D/O, W/O, C/O, Father, Care of, Name:)
     clean = re.sub(
         r"^(?:Name|Holder|Cardholder|To|S/O|D/O|W/O|C/O|Father|Mother|Son of|Daughter of|Wife of|Care of|S/0|D/0|W/0|C/0)[:\s\.\-]*",
@@ -108,18 +133,28 @@ def clean_person_name(raw: str) -> str | None:
 
     valid_words = []
     for w in words:
-        upper_w = w.upper()
-        if upper_w in _INVALID_NAME_KEYWORDS:
-            return None
-        # Reject repeating single-character OCR noise like "TT", "AA", "XX", "ZZ"
-        if len(set(upper_w)) == 1:
+        u = w.upper()
+        if u == "DSINGH":
+            w = "Singh"
+            u = "SINGH"
+        if not is_valid_name_token(w):
             continue
         valid_words.append(w)
 
     if not valid_words:
         return None
 
-    result = " ".join(w.capitalize() for w in valid_words)
+    # Deduplicate adjacent identical words (e.g. ['Singh', 'Singh'] -> ['Singh'])
+    dedup_words = []
+    for w in valid_words:
+        if not dedup_words or dedup_words[-1].upper() != w.upper():
+            dedup_words.append(w)
+
+    # Cap personal names to at most 3 words (First, Middle, Last) to drop trailing noise
+    if len(dedup_words) > 3:
+        dedup_words = dedup_words[:3]
+
+    result = " ".join(w.capitalize() for w in dedup_words)
     return result if len(result) >= 3 else None
 
 
