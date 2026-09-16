@@ -30,32 +30,32 @@ from PIL import ImageEnhance
 def extract_text_from_image(file_path: str) -> str:
     extracted_lines = []
 
-    # Preprocess image with PIL (resize to max 1400px + contrast enhance for ultra-fast OCR)
+    # Preprocess image with PIL (LANCZOS sharpness + PNG lossless save for crisp text)
     enhanced_path = file_path
     try:
         image = Image.open(file_path)
         if image.mode != "RGB":
             image = image.convert("RGB")
         
-        # Scale to max 1400px width/height for instant <200ms Tesseract processing
+        # Keep ideal dimensions (800px-1800px) with sharp LANCZOS resampling
         max_dim = max(image.width, image.height)
-        if max_dim > 1400:
+        if max_dim > 1800:
+            scale = 1800.0 / max_dim
+            new_w = int(image.width * scale)
+            new_h = int(image.height * scale)
+            image = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        elif max_dim < 1000:
             scale = 1400.0 / max_dim
             new_w = int(image.width * scale)
             new_h = int(image.height * scale)
-            image = image.resize((new_w, new_h), Image.Resampling.BILINEAR)
-        elif max_dim < 800:
-            scale = 1200.0 / max_dim
-            new_w = int(image.width * scale)
-            new_h = int(image.height * scale)
-            image = image.resize((new_w, new_h), Image.Resampling.BILINEAR)
+            image = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
         
         enhancer = ImageEnhance.Contrast(image)
-        image = enhancer.enhance(1.5)
+        image = enhancer.enhance(1.6)
 
         import tempfile
-        tmp_img = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
-        image.save(tmp_img.name, format="JPEG", quality=85)
+        tmp_img = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+        image.save(tmp_img.name, format="PNG")
         enhanced_path = tmp_img.name
     except Exception:
         pass
