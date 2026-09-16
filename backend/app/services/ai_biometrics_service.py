@@ -114,9 +114,17 @@ def extract_face_and_embedding(image_input: Any):
 
     face_tensor = mtcnn(pil_img)
     if face_tensor is None:
-        pil_resized = pil_img.resize((160, 160))
-        np_arr = np.array(pil_resized, dtype=np.float32)
-        face_tensor = torch.from_numpy(np_arr).permute(2, 0, 1)
+        # If MTCNN failed on full document page, attempt cropping left photo region of ID/passport
+        w, h = pil_img.width, pil_img.height
+        if w >= 250 and h >= 180:
+            left_crop = pil_img.crop((int(w * 0.02), int(h * 0.10), int(w * 0.40), int(h * 0.78)))
+            face_tensor = mtcnn(left_crop)
+            if face_tensor is None:
+                center_crop = pil_img.crop((int(w * 0.15), int(h * 0.10), int(w * 0.85), int(h * 0.90)))
+                face_tensor = mtcnn(center_crop)
+
+    if face_tensor is None:
+        return None, None, None
 
     # Normalize tensor to [-1, 1] for InceptionResnetV1
     face_tensor_norm = (face_tensor.float() - 127.5) / 128.0
@@ -223,21 +231,21 @@ def compare_faces(
     cosine_sim = float(np.dot(emb_doc, emb_live))
 
     # Calibrate matching percentage
-    if cosine_sim >= 0.65:
-        # Genuine match (typically 0.70 to 0.95)
-        normalized_match = round(75.0 + min(24.0, ((cosine_sim - 0.65) / (0.90 - 0.65)) * 24.0), 2)
+    if cosine_sim >= 0.60:
+        # Genuine match (typically 0.60 to 0.95 for same person)
+        normalized_match = round(75.0 + min(24.0, ((cosine_sim - 0.60) / (0.90 - 0.60)) * 24.0), 2)
         match_verdict = "MATCH_CONFIRMED"
         is_verified = True
         bio_risk = max(0, int(100 - normalized_match))
     elif cosine_sim >= 0.45:
         # Marginal similarity - manual review recommended
-        normalized_match = round(50.0 + ((cosine_sim - 0.45) / (0.65 - 0.45)) * 24.0, 2)
+        normalized_match = round(45.0 + ((cosine_sim - 0.45) / (0.60 - 0.45)) * 25.0, 2)
         match_verdict = "MANUAL_INSPECTION_REQUIRED"
         is_verified = False
         bio_risk = 55
     else:
-        # Severe mismatch / Impostor attack
-        normalized_match = round(max(0.0, (cosine_sim / 0.45) * 49.0), 2)
+        # Severe mismatch / Impostor attack (different persons)
+        normalized_match = round(max(0.0, (cosine_sim / 0.45) * 40.0), 2)
         match_verdict = "IMPOSTOR_ALERT_MISMATCH"
         is_verified = False
         bio_risk = 95

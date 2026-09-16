@@ -11,12 +11,31 @@ class MockFaceMatchingProvider(FaceMatchingProvider):
         document_image_path: str,
         selfie_image_path: str,
     ) -> dict[str, Any]:
+        doc_path = Path(document_image_path)
+        selfie_path = Path(selfie_image_path)
+
+        if doc_path.exists() and selfie_path.exists():
+            try:
+                res = compare_faces(doc_path, selfie_path)
+                return {
+                    "provider": "real_biometric_face_matching",
+                    "is_mock": False,
+                    "match_status": "MATCHED" if res["verified"] else "NOT_MATCHED",
+                    "similarity_score": res["similarity_score"],
+                    "raw_cosine_similarity": res["raw_cosine_similarity"],
+                    "confidence_level": "HIGH",
+                    "biometric_verdict": res["match_verdict"],
+                }
+            except Exception:
+                pass
+
         return {
-            "provider": "mock",
+            "provider": "mock_impostor_alert",
             "is_mock": True,
-            "match_status": "MATCHED",
-            "similarity_score": 0.91,
+            "match_status": "NOT_MATCHED",
+            "similarity_score": 0.25,
             "confidence_level": "HIGH",
+            "biometric_verdict": "IMPOSTOR_ALERT_MISMATCH",
         }
 
 

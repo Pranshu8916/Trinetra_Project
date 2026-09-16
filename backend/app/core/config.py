@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
 
-    use_mock_mode: bool = True
+    use_mock_mode: bool = False
 
     cloudinary_cloud_name: str | None = None
     cloudinary_api_key: str | None = None
