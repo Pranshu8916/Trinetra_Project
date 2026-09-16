@@ -56,6 +56,12 @@ app.add_middleware(
 )
 
 
+@app.get("/")
+@app.get("/health")
+async def root_health():
+    return {"status": "ok", "service": "trinetra-backend", "system_status": "OPERATIONAL_READY"}
+
+
 @app.middleware("http")
 async def add_security_headers(request, call_next):
     response = await call_next(request)
