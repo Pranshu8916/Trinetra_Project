@@ -73,7 +73,7 @@ function formatErrorMessage(status, detail, isNetworkError, isTimeout) {
 }
 
 // ─── Core fetch wrapper ───────────────────────────────────────────
-async function apiFetch(path, { method = "GET", body, token, isFormData, timeoutMs = 15000 } = {}) {
+async function apiFetch(path, { method = "GET", body, token, isFormData, timeoutMs = 120000 } = {}) {
   const headers = {};
   const tok = token || getToken();
   if (tok) headers["Authorization"] = `Bearer ${tok}`;
@@ -226,7 +226,7 @@ export async function apiScreenDocument(
     method: "POST",
     body: fd,
     isFormData: true,
-    timeoutMs: 60_000, // AI pipeline can take 10-30s on real images
+    timeoutMs: 120_000, // Safe 120s limit for cloud AI screening uploads
   });
 }
 

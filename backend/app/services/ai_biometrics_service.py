@@ -155,9 +155,20 @@ def extract_fast_facial_descriptor(cv_img: np.ndarray) -> np.ndarray | None:
 
 def extract_face_and_embedding(image_input: Any):
     """
-    Detects face using MTCNN + FaceNet 512-D embeddings if loaded,
-    falling back instantly to 384-D Spatial-Color-Structure Biometric Descriptor.
+    Extracts 384-D Spatial-Color-Structure Biometric Descriptor (<10ms execution, <5MB RAM),
+    preventing 60s request timeouts and PyTorch OOM crashes on Railway.
     """
+    # 1. Fast OpenCV descriptor (<10ms)
+    try:
+        cv_img = load_image_cv(image_input)
+        vec = extract_fast_facial_descriptor(cv_img)
+        if vec is not None:
+            h, w = cv_img.shape[:2]
+            return vec, vec, [0, 0, w, h]
+    except Exception:
+        pass
+
+    # 2. PyTorch MTCNN + FaceNet fallback if loaded
     try:
         pil_img = load_pil_image(image_input)
         mtcnn, resnet = get_facenet_models()
@@ -167,15 +178,6 @@ def extract_face_and_embedding(image_input: Any):
         best_box = boxes[0].tolist() if (boxes is not None and len(boxes) > 0) else [0, 0, pil_img.width, pil_img.height]
 
         face_tensor = mtcnn(pil_img)
-        if face_tensor is None:
-            w, h = pil_img.width, pil_img.height
-            if w >= 250 and h >= 180:
-                left_crop = pil_img.crop((int(w * 0.02), int(h * 0.10), int(w * 0.40), int(h * 0.78)))
-                face_tensor = mtcnn(left_crop)
-                if face_tensor is None:
-                    center_crop = pil_img.crop((int(w * 0.15), int(h * 0.10), int(w * 0.85), int(h * 0.90)))
-                    face_tensor = mtcnn(center_crop)
-
         if face_tensor is not None:
             face_tensor_norm = (face_tensor.float() - 127.5) / 128.0
             with torch.no_grad():
@@ -184,16 +186,6 @@ def extract_face_and_embedding(image_input: Any):
                 norm = np.linalg.norm(emb_np)
                 emb_norm = emb_np / (norm + 1e-7)
             return face_tensor, emb_norm, best_box
-    except Exception:
-        pass
-
-    # Fast OpenCV fallback descriptor (<10ms)
-    try:
-        cv_img = load_image_cv(image_input)
-        vec = extract_fast_facial_descriptor(cv_img)
-        if vec is not None:
-            h, w = cv_img.shape[:2]
-            return vec, vec, [0, 0, w, h]
     except Exception:
         pass
 
