@@ -111,6 +111,16 @@ def is_valid_name_token(w: str) -> bool:
     return True
 
 
+WATERMARK_STOP_WORDS = {
+    "TR", "ONA", "ERIE", "LMV", "MCWG", "MCWOG", "TRANS", "NONTRANS", "RTO",
+    "CLASS", "COV", "VEHICLE", "AUTHORIZATION", "AUTHORISED", "AUTHORISE",
+    "DL", "ID", "NT", "LMVNT", "CCCECE", "NON", "TRANSPORT", "FORM", "ISSUE",
+    "EXPIRY", "VALID", "LICENCE", "LICENSE", "CARD", "GUJARAT", "STATE", "INDIA",
+    "GOVERNMENT", "UIDAI", "SARKAR", "DEPARTMENT", "REPUBLIC", "UNION", "PASSPORT",
+    "DOB", "SEX", "GENDER", "NATIONALITY", "NOM", "PRENOM", "SURNAME", "GIVEN"
+}
+
+
 def clean_person_name(raw: str) -> str | None:
     """Sanitizes raw OCR text into a clean 2–3 word personal name."""
     if not raw or len(raw) < 2:
@@ -134,11 +144,17 @@ def clean_person_name(raw: str) -> str | None:
     valid_words = []
     for w in words:
         u = w.upper()
+        if u in WATERMARK_STOP_WORDS:
+            break  # STOP IMMEDIATELY at background watermark / noise token
         if u == "DSINGH":
-            w = "Singh"
-            u = "SINGH"
-        if not is_valid_name_token(w):
+            valid_words.append("Singh")
+            break
+        # Reject repeating single-character OCR noise like "CCCECECCCCCCCCCCCCCCCS"
+        max_freq = max(u.count(c) for c in set(u))
+        if max_freq >= 4 or (len(u) >= 6 and max_freq / len(u) > 0.4):
             continue
+        if not is_valid_name_token(w):
+            break  # Stop processing line when invalid noise token is reached
         valid_words.append(w)
 
     if not valid_words:
