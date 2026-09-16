@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install lightweight PyTorch CPU wheel first (150MB instead of 2.8GB GPU wheel)
+# Install lightweight PyTorch CPU wheel first
 RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
 # Copy and install python requirements
@@ -22,5 +22,5 @@ COPY . .
 # Expose backend port
 EXPOSE 8000
 
-# Run FastAPI with Uvicorn
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Run FastAPI with Uvicorn on port 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
