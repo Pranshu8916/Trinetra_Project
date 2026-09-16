@@ -78,6 +78,10 @@ class RealDocumentFraudProvider(DocumentFraudProvider):
                 "is_mock": False,
                 "authenticity_score": authenticity,
                 "tampering_detected": tamper_detected,
+                "document_number": extracted_data.get("document_number"),
+                "holder_name": extracted_data.get("name"),
+                "date_of_birth": extracted_data.get("date_of_birth"),
+                "nationality": extracted_data.get("nationality"),
                 "signals": {
                     "mean_error": ela_result["mean_error"],
                     "ela_error_variance": ela_result["ela_error_variance"],

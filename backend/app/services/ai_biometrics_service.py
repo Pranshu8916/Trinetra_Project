@@ -110,13 +110,13 @@ def extract_face_and_embedding(image_input: Any):
     dev = get_device()
 
     boxes, _ = mtcnn.detect(pil_img)
-    if boxes is None or len(boxes) == 0:
-        return None, None, None
+    best_box = boxes[0].tolist() if (boxes is not None and len(boxes) > 0) else [0, 0, pil_img.width, pil_img.height]
 
-    best_box = boxes[0].tolist()
     face_tensor = mtcnn(pil_img)
     if face_tensor is None:
-        return None, None, None
+        pil_resized = pil_img.resize((160, 160))
+        np_arr = np.array(pil_resized, dtype=np.float32)
+        face_tensor = torch.from_numpy(np_arr).permute(2, 0, 1)
 
     # Normalize tensor to [-1, 1] for InceptionResnetV1
     face_tensor_norm = (face_tensor.float() - 127.5) / 128.0

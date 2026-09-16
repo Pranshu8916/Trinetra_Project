@@ -29,6 +29,10 @@ def test_api_error_handling_contracts():
     print("    Keyword label pollution prevention: [PASSED]")
 
 
+import pytest
+
+
+@pytest.mark.anyio
 async def test_session_not_found_contract():
     print("\n[+] Testing Phase 5: Session Not Found (404) Contract...")
     caught_404 = False

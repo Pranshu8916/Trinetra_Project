@@ -79,6 +79,10 @@ def parse_td3_passport(line1: str, line2: str) -> dict[str, Any]:
     clean_l1 = line1.replace(" ", "").upper()
     clean_l2 = line2.replace(" ", "").upper()
 
+    # Normalize if clean_l1 starts with P + 3 uppercase letters (e.g. PINDSINGH -> P<INDSINGH)
+    if re.match(r"^P[A-Z]{3}", clean_l1) and not clean_l1.startswith("P<"):
+        clean_l1 = "P<" + clean_l1[1:]
+
     # Detect if lines are reversed (Line 2 passed first, Line 1 passed second)
     if is_likely_mrz_line1(clean_l2) and not is_likely_mrz_line1(clean_l1):
         clean_l1, clean_l2 = clean_l2, clean_l1
@@ -203,13 +207,13 @@ def find_mrz_in_text(text: str) -> dict[str, Any] | None:
     line2_candidates = []
 
     for line in lines:
-        is_p_l1 = line.startswith("P<") or (line.startswith("P") and "<" in line and len(line) >= 28)
-        is_v_l1 = line.startswith("V<") or (re.match(r"^V[A-Z0-9<]", line) and "<" in line and len(line) >= 25)
-        if (is_p_l1 or is_v_l1) and "<<" in line:
+        is_p_l1 = line.startswith("P<") or (line.startswith("P") and "<" in line and len(line) >= 18)
+        is_v_l1 = line.startswith("V<") or (re.match(r"^V[A-Z0-9<]", line) and "<" in line and len(line) >= 18)
+        if (is_p_l1 or is_v_l1) and ("<<" in line or "<" in line):
             line1_candidates.append(line)
         elif is_likely_mrz_line2(line):
             line2_candidates.append(line)
-        elif len(line) >= 28 and line.count("<") >= 2:
+        elif len(line) >= 20 and line.count("<") >= 2:
             if "<<" in line:
                 line1_candidates.append(line)
             else:
@@ -225,9 +229,9 @@ def find_mrz_in_text(text: str) -> dict[str, Any] | None:
     # Standard consecutive pair fallback
     mrz_candidates = []
     for line in lines:
-        is_passport_mrz = line.startswith("P<") or (line.startswith("P") and "<" in line and len(line) >= 28)
-        is_visa_mrz = line.startswith("V<") or (re.match(r"^V[A-Z0-9<]", line) and "<" in line and len(line) >= 25)
-        is_general_mrz = len(line) >= 28 and line.count("<") >= 2
+        is_passport_mrz = line.startswith("P<") or (line.startswith("P") and "<" in line and len(line) >= 18)
+        is_visa_mrz = line.startswith("V<") or (re.match(r"^V[A-Z0-9<]", line) and "<" in line and len(line) >= 18)
+        is_general_mrz = len(line) >= 20 and line.count("<") >= 2
         if is_passport_mrz or is_visa_mrz or is_general_mrz:
             mrz_candidates.append(line)
 

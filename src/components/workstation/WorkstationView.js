@@ -7,6 +7,7 @@ import LeftPanel from "./LeftPanel";
 import CenterPanel from "./CenterPanel";
 import RightPanel from "./RightPanel";
 import BiometricCameraModal from "./BiometricCameraModal";
+import CriminalAlertModal from "./CriminalAlertModal";
 import { addRecordFromCaseData } from "@/lib/auditTrailService";
 
 
@@ -153,8 +154,9 @@ export default function WorkstationView({ user, masterSessionId }) {
   const [liveFrameBlob,       setLiveFrameBlob]       = useState(null);
   const [liveFramePreviewUrl, setLiveFramePreviewUrl] = useState(null);
 
-  // Camera modal
+  // Camera modal & Criminal Alert modal
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [alertModalOpen, setAlertModalOpen] = useState(false);
 
   // Pipeline animation
   const [stages,    setStages]    = useState(initStages);
@@ -203,6 +205,11 @@ export default function WorkstationView({ user, masterSessionId }) {
       };
       setCaseData(newCaseData);
       setAnalysisComplete(true);
+
+      // Trigger pop-up alert for Criminal Match or High Risk Subject
+      if (newCaseData.watchlist_status === "FLAGGED" || (newCaseData.riskScore && newCaseData.riskScore >= 60) || result.decision === "Fraud/Impostor") {
+        setAlertModalOpen(true);
+      }
 
       // Auto save audit record
       addRecordFromCaseData(newCaseData, user, masterSessionId || result.report_id);
@@ -326,6 +333,13 @@ export default function WorkstationView({ user, masterSessionId }) {
         isOpen={cameraOpen}
         onClose={() => setCameraOpen(false)}
         onCapture={handleCapture}
+      />
+
+      {/* High-priority Pop-up Alert Modal for Criminal Matches or High Risk Subjects */}
+      <CriminalAlertModal
+        isOpen={alertModalOpen}
+        onClose={() => setAlertModalOpen(false)}
+        caseData={caseData}
       />
     </div>
   );

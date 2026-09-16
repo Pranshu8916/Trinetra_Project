@@ -126,13 +126,22 @@ def run_all_models(doc_path: str | Path, selfie_path: str | Path):
     print_banner("5. Trinetra Composite Risk Engine Verdict")
     risk_engine = RuleBasedRiskEngineProvider()
 
+    doc_num = mrz_res.get("document_number") if mrz_res else extracted.get("document_number")
+    holder = f"{mrz_res.get('given_names', '')} {mrz_res.get('surname', '')}".strip() if mrz_res else extracted.get("name")
+    dob = mrz_res.get("date_of_birth") if mrz_res else extracted.get("date_of_birth")
+    nat = mrz_res.get("nationality") if mrz_res else extracted.get("nationality")
+
     doc_analysis = {
         "provider": "supplied_ela_forensics",
         "is_mock": False,
         "authenticity_score": max(0.1, round((100 - ela_res["tamper_risk_score"]) / 100.0, 2)),
         "tampering_detected": ela_res["is_suspicious"],
+        "document_number": doc_num,
+        "holder_name": holder,
+        "date_of_birth": dob,
+        "nationality": nat,
         "signals": {
-            "required_fields_present": bool(extracted.get("name") and extracted.get("document_number")),
+            "required_fields_present": bool(holder or doc_num),
         },
     }
     face_analysis = {

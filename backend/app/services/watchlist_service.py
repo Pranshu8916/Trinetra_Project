@@ -222,6 +222,7 @@ class WatchlistService:
                 "checked_at": str
             }
         """
+        self._ensure_cache_loaded()
         checked_at = datetime.now(timezone.utc).isoformat()
         total_records = len(self.notices)
 

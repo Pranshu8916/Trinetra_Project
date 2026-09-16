@@ -1,0 +1,5 @@
+cd C:\Users\Victus\Desktop\Trinetra_Project\backend
+uvicorn app.main:app --port 8000 --reload
+
+cd C:\Users\Victus\Desktop\Trinetra_Project
+npm run dev

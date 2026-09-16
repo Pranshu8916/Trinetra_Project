@@ -73,10 +73,14 @@ def extract_document_fields(
         field_confidence["document_type"] = 0.98
         if parsed_id.get("holder_name"):
             cand_name = str(parsed_id["holder_name"]).strip()
+            placeholder_names = {
+                "UNSPECIFIED PASSENGER", "VISA HOLDER", "IDENTITY HOLDER",
+                "LICENSE HOLDER", "PAN HOLDER", "AADHAAR HOLDER", "PASSPORT HOLDER", "UNSPECIFIED"
+            }
             if cand_name.upper() in NATIONALITY_KEYWORDS_SET:
                 if not extracted.get("nationality"):
                     extracted["nationality"] = COMMON_NATIONALITY_MAP.get(cand_name.upper(), cand_name.upper())
-            elif cand_name.upper() not in EXCLUDED_LABEL_KEYWORDS and cand_name != "Visa Holder":
+            elif cand_name.upper() not in EXCLUDED_LABEL_KEYWORDS and cand_name.upper() not in placeholder_names:
                 extracted["name"] = cand_name
                 field_confidence["name"] = 0.95
         if parsed_id.get("document_number"):
@@ -191,8 +195,15 @@ def extract_document_fields(
         given = gn_match.group(1).split("\n")[0].strip() if gn_match else ""
 
         # Clean noise/labels from surname/given
+        surname = re.sub(r"^(?:NOM|SURNAME|LAST\s*NAME)[:\s]*", "", surname, flags=re.IGNORECASE).strip()
+        given = re.sub(r"^(?:PRENOMS?|PRÉNOM|GIVEN\s*NAMES?|FIRST\s*NAME)[:\s]*", "", given, flags=re.IGNORECASE).strip()
         surname = re.split(r"\b(?:DOB|DATE|SEX|GENDER|NO|DOC|NAT|NATIONALIT|ISSUED|EXPIRY)\b", surname, flags=re.IGNORECASE)[0].strip(" :.-/")
         given = re.split(r"\b(?:DOB|DATE|SEX|GENDER|NO|DOC|NAT|NATIONALIT|ISSUED|EXPIRY)\b", given, flags=re.IGNORECASE)[0].strip(" :.-/")
+
+        if not surname:
+            nom_m = re.search(r"\bNOM[:\s]+([A-Za-z]+)", text, re.IGNORECASE)
+            if nom_m:
+                surname = nom_m.group(1).strip()
 
         if surname and surname.upper() in NATIONALITY_KEYWORDS_SET:
             if not extracted["nationality"] or extracted["nationality"] in {"ND8", "0IN", "1ND", "R", "UNK", "Unspecified"}:
