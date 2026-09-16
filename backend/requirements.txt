@@ -16,7 +16,7 @@ PyJWT>=2.8.0
 # Image Processing, Computer Vision & Media
 Pillow>=10.2.0,<10.3.0
 opencv-python-headless>=4.8.0
-numpy>=1.26.0
+numpy>=1.26.0,<2.0.0
 filetype>=1.2.0
 
 # AI/ML & Document Parsing Algorithms
