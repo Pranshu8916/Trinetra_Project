@@ -80,17 +80,6 @@ def extract_text_from_image(file_path: str) -> str:
     except Exception:
         pass
 
-    # 3. EasyOCR fallback (Only if pytesseract yields no text)
-    if not extracted_lines:
-        reader = get_easyocr_reader()
-        if reader:
-            try:
-                lines = reader.readtext(enhanced_path, detail=0)
-                if lines:
-                    extracted_lines.extend(lines)
-            except Exception:
-                pass
-
     if extracted_lines:
         return "\n".join(extracted_lines).strip()
     return ""
