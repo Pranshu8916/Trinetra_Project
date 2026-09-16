@@ -304,22 +304,22 @@ def compare_faces(
     # 3. Compute Cosine Similarity
     cosine_sim = float(np.dot(emb_doc, emb_live))
 
-    # Calibrate matching percentage
-    if cosine_sim >= 0.72:
-        # High-confidence genuine match (same person) -> 82% to 98%
-        normalized_match = round(82.0 + min(16.0, ((cosine_sim - 0.72) / (0.98 - 0.72)) * 16.0), 2)
+    # Calibrate matching percentage for Aadhaar / Passport vs Webcam Selfie
+    if cosine_sim >= 0.42:
+        # High-confidence genuine same-person match -> 88.0% to 98.0%
+        normalized_match = round(88.0 + min(10.0, ((cosine_sim - 0.42) / (0.80 - 0.42)) * 10.0), 2)
         match_verdict = "MATCH_CONFIRMED"
         is_verified = True
         bio_risk = max(0, int(100 - normalized_match))
-    elif cosine_sim >= 0.65:
-        # Moderate match (angle/lighting variation) -> 60% to 81%
-        normalized_match = round(60.0 + ((cosine_sim - 0.65) / (0.72 - 0.65)) * 21.0, 2)
+    elif cosine_sim >= 0.35:
+        # Moderate match -> 65.0% to 87.0%
+        normalized_match = round(65.0 + ((cosine_sim - 0.35) / (0.42 - 0.35)) * 22.0, 2)
         match_verdict = "MATCH_CONFIRMED"
         is_verified = True
-        bio_risk = 25
+        bio_risk = 20
     else:
-        # Impostor Attack / Different persons -> 0% to 35%
-        normalized_match = round(max(0.0, (cosine_sim / 0.65) * 35.0), 2)
+        # Impostor Attack / Different persons -> 5.0% to 32.0%
+        normalized_match = round(max(5.0, (cosine_sim / 0.35) * 32.0), 2)
         match_verdict = "IMPOSTOR_ALERT_MISMATCH"
         is_verified = False
         bio_risk = 95
