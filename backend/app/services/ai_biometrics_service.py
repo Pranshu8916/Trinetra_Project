@@ -116,15 +116,39 @@ def extract_fast_facial_descriptor(cv_img: np.ndarray, is_document: bool = False
     # Smart crop:
     # 1. If already a cropped face photo (small dimensions), use as is
     if w <= 350 and h <= 350:
-        target_img = cv_img
-    # 2. If wide document scan (passport / DL), crop left ID photo region
-    elif is_document and w >= 450 and w > int(h * 1.2):
-        face_crop = cv_img[int(h * 0.10) : int(h * 0.78), int(w * 0.02) : int(w * 0.40)]
-        target_img = face_crop if face_crop.size > 0 else cv_img
+        base_roi = cv_img
+    # 2. If ID Document (Aadhaar / Passport / PAN / Driving License) — photo is ALWAYS in left 48%
+    elif is_document:
+        base_roi = cv_img[int(h * 0.05) : int(h * 0.95), 0 : int(w * 0.48)]
     # 3. For live selfie webcam frame, crop central face region
     else:
-        center_crop = cv_img[int(h * 0.05) : int(h * 0.90), int(w * 0.15) : int(w * 0.85)]
-        target_img = center_crop if center_crop.size > 0 else cv_img
+        base_roi = cv_img[int(h * 0.02) : int(h * 0.98), int(w * 0.10) : int(w * 0.90)]
+
+    if base_roi.size == 0:
+        base_roi = cv_img
+
+    # Isolate face headshot from background using skin tone segmentation
+    target_img = base_roi
+    try:
+        hsv_temp = cv2.cvtColor(base_roi, cv2.COLOR_BGR2HSV)
+        mask1 = cv2.inRange(hsv_temp, np.array([0, 20, 50]), np.array([25, 255, 255]))
+        mask2 = cv2.inRange(hsv_temp, np.array([170, 20, 50]), np.array([180, 255, 255]))
+        mask = mask1 | mask2
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if contours:
+            c = max(contours, key=cv2.contourArea)
+            bx, by, bw, bh = cv2.boundingRect(c)
+            rh, rw = base_roi.shape[:2]
+            if bw > int(rw * 0.18) and bh > int(rh * 0.18):
+                y1 = max(0, int(by - bh * 0.10))
+                y2 = min(rh, int(by + bh * 1.10))
+                x1 = max(0, int(bx - bw * 0.10))
+                x2 = min(rw, int(bx + bw * 1.10))
+                fc = base_roi[y1:y2, x1:x2]
+                if fc.size > 0:
+                    target_img = fc
+    except Exception:
+        pass
 
     try:
         face = cv2.resize(target_img, (128, 128))
