@@ -293,27 +293,21 @@ def compare_faces(
     cosine_sim = float(np.dot(emb_doc, emb_live))
 
     # Calibrate matching percentage
-    if cosine_sim >= 0.85:
-        # High confidence match (same person)
-        normalized_match = round(80.0 + min(19.0, ((cosine_sim - 0.85) / 0.15) * 19.0), 2)
+    if cosine_sim >= 0.72:
+        # High-confidence genuine match (same person) -> 82% to 98%
+        normalized_match = round(82.0 + min(16.0, ((cosine_sim - 0.72) / (0.90 - 0.72)) * 16.0), 2)
         match_verdict = "MATCH_CONFIRMED"
         is_verified = True
         bio_risk = max(0, int(100 - normalized_match))
-    elif cosine_sim >= 0.75:
-        # Moderate match
-        normalized_match = round(60.0 + ((cosine_sim - 0.75) / 0.10) * 19.0, 2)
+    elif cosine_sim >= 0.55:
+        # Moderate match (angle/lighting variation) -> 60% to 81%
+        normalized_match = round(60.0 + ((cosine_sim - 0.55) / (0.72 - 0.55)) * 21.0, 2)
         match_verdict = "MATCH_CONFIRMED"
         is_verified = True
-        bio_risk = 30
-    elif cosine_sim >= 0.65:
-        # Marginal similarity - manual review recommended
-        normalized_match = round(45.0 + ((cosine_sim - 0.65) / 0.10) * 14.0, 2)
-        match_verdict = "MANUAL_INSPECTION_REQUIRED"
-        is_verified = False
-        bio_risk = 55
+        bio_risk = 25
     else:
-        # Impostor Attack / Different persons
-        normalized_match = round(max(0.0, (cosine_sim / 0.65) * 35.0), 2)
+        # Impostor Attack / Different persons -> 0% to 35%
+        normalized_match = round(max(0.0, (cosine_sim / 0.55) * 35.0), 2)
         match_verdict = "IMPOSTOR_ALERT_MISMATCH"
         is_verified = False
         bio_risk = 95
